@@ -313,7 +313,7 @@ function analyze() {
           <div class="stop-rules">
             <div class="stop-step"><span class="step-num">1</span><span class="step-body"><span class="step-label">NOW → Enter trade</span><br>Set stop at <span class="stop-val red">$${s.st}</span></span></div>
             <div class="stop-step"><span class="step-num">2</span><span class="step-body"><span class="step-label">When price hits <span class="stop-val yellow">$${Math.round(s.en*1.02*100)/100}</span> (+2%)</span><br>Cancel original stop. Set new stop at breakeven <span class="stop-val yellow">$${s.en}</span> — you cannot lose now</span></div>
-            <div class="stop-step"><span class="step-num">3</span><span class="step-body"><span class="step-label">When price hits <span class="stop-val blue">$${Math.round((s.en+s.ri*2)*100)/100}</span> (+2x risk above entry)</span><br>Switch to trailing stop: set at <span class="stop-val blue">$${Math.round((s.en+s.ri)*100)/100}</span> (1x risk below current price). Raise it manually as price climbs toward target.</span></div>
+            <div class="stop-step"><span class="step-num">3</span><span class="step-body"><span class="step-label">When price hits <span class="stop-val blue">$${Math.round((s.en+s.ri)*100)/100}</span> (+1x risk above entry)</span><br>Switch to trailing stop: set at <span class="stop-val blue">$${s.en}</span> (breakeven). Raise it manually $1 at a time as price climbs toward target <span class="stop-val yellow">$${s.tg}</span>.</span></div>
             <div class="stop-rule hard-exit">⏰ Hard exit Thu 2:30 PM CT regardless</div>
           </div>
         </div>
