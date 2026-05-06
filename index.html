@@ -118,16 +118,32 @@ let lastExcluded = [];
 // ---- SPY ----
 async function fetchSPY() {
   try {
-    const r = await fetch('https://69e1038288f84609de326dca.functions.base44.com/getMarketContext', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
+    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2d', {
+      headers: { 'Accept': 'application/json' }
     });
-    const d = await r.json();
-    if (d.currentPrice) updateSPY(d);
+    const json = await r.json();
+    const meta = json.chart.result[0].meta;
+    const currentPrice = meta.regularMarketPrice;
+    const prevClose = meta.chartPreviousClose || meta.previousClose;
+    const changePct = ((currentPrice - prevClose) / prevClose) * 100;
+    updateSPY({ currentPrice, prevClose, changePct, halt: changePct <= -1 });
   } catch(e) {
-    document.getElementById('spyPrice').textContent = 'Unavailable';
-    document.getElementById('spyStatus').textContent = '';
-    document.getElementById('spyStatus').style.color = '#f87171';
+    // fallback: try allorigins proxy
+    try {
+      const url = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2d');
+      const r = await fetch('https://api.allorigins.win/get?url=' + url);
+      const wrapper = await r.json();
+      const json = JSON.parse(wrapper.contents);
+      const meta = json.chart.result[0].meta;
+      const currentPrice = meta.regularMarketPrice;
+      const prevClose = meta.chartPreviousClose || meta.previousClose;
+      const changePct = ((currentPrice - prevClose) / prevClose) * 100;
+      updateSPY({ currentPrice, prevClose, changePct, halt: changePct <= -1 });
+    } catch(e2) {
+      document.getElementById('spyPrice').textContent = 'Unavailable';
+      document.getElementById('spyStatus').textContent = 'SPY feed error';
+      document.getElementById('spyStatus').style.color = '#f87171';
+    }
   }
 }
 
