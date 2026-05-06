@@ -117,34 +117,40 @@ let lastExcluded = [];
 
 // ---- SPY ----
 async function fetchSPY() {
-  try {
-    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2d', {
-      headers: { 'Accept': 'application/json' }
-    });
-    const json = await r.json();
-    const meta = json.chart.result[0].meta;
-    const currentPrice = meta.regularMarketPrice;
-    const prevClose = meta.chartPreviousClose || meta.previousClose;
-    const changePct = ((currentPrice - prevClose) / prevClose) * 100;
-    updateSPY({ currentPrice, prevClose, changePct, halt: changePct <= -1 });
-  } catch(e) {
-    // fallback: try allorigins proxy
-    try {
-      const url = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2d');
-      const r = await fetch('https://api.allorigins.win/get?url=' + url);
+  const sources = [
+    () => fetch('https://finnhub.io/api/v1/quote?symbol=SPY&token=demo').then(r=>r.json()).then(d=>({currentPrice:d.c,prevClose:d.pc,changePct:((d.c-d.pc)/d.pc)*100,halt:((d.c-d.pc)/d.pc)*100<=-1})),
+    () => fetch('https://api.twelvedata.com/price?symbol=SPY&apikey=demo').then(r=>r.json()).then(d=>{ throw new Error('no prev'); }),
+    async () => {
+      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2d';
+      const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+      const json = await r.json();
+      const meta = json.chart.result[0].meta;
+      const currentPrice = meta.regularMarketPrice;
+      const prevClose = meta.chartPreviousClose || meta.previousClose;
+      const changePct = ((currentPrice - prevClose) / prevClose) * 100;
+      return { currentPrice, prevClose, changePct, halt: changePct <= -1 };
+    },
+    async () => {
+      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2d';
+      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
       const wrapper = await r.json();
       const json = JSON.parse(wrapper.contents);
       const meta = json.chart.result[0].meta;
       const currentPrice = meta.regularMarketPrice;
       const prevClose = meta.chartPreviousClose || meta.previousClose;
       const changePct = ((currentPrice - prevClose) / prevClose) * 100;
-      updateSPY({ currentPrice, prevClose, changePct, halt: changePct <= -1 });
-    } catch(e2) {
-      document.getElementById('spyPrice').textContent = 'Unavailable';
-      document.getElementById('spyStatus').textContent = 'SPY feed error';
-      document.getElementById('spyStatus').style.color = '#f87171';
+      return { currentPrice, prevClose, changePct, halt: changePct <= -1 };
     }
+  ];
+  for (const src of sources) {
+    try {
+      const d = await src();
+      if (d && d.currentPrice && d.currentPrice > 0) { updateSPY(d); return; }
+    } catch(e) { continue; }
   }
+  document.getElementById('spyPrice').textContent = 'Unavailable';
+  document.getElementById('spyStatus').textContent = 'SPY feed error';
+  document.getElementById('spyStatus').style.color = '#f87171';
 }
 
 function updateSPY(d) {
