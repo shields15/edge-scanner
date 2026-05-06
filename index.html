@@ -313,7 +313,7 @@ function analyze() {
           <div class="stop-rules">
             <div class="stop-step"><span class="step-num">1</span><span class="step-body"><span class="step-label">NOW → Enter trade</span><br>Set stop at <span class="stop-val red">$${s.st}</span></span></div>
             <div class="stop-step"><span class="step-num">2</span><span class="step-body"><span class="step-label">When price hits <span class="stop-val yellow">$${Math.round(s.en*1.02*100)/100}</span> (+2%)</span><br>Move stop up to breakeven <span class="stop-val yellow">$${s.en}</span></span></div>
-            <div class="stop-step"><span class="step-num">3</span><span class="step-body"><span class="step-label">Once above breakeven &amp; still climbing</span><br>Switch to trailing stop — set at <span class="stop-val blue">$${Math.round((s.en*1.02 - s.ri)*100)/100}</span>, raise it as price rises</span></div>
+            <div class="stop-step"><span class="step-num">3</span><span class="step-body"><span class="step-label">Once above breakeven &amp; still climbing</span><br>Switch to trailing stop — set at <span class="stop-val blue">current price − $${s.ri}</span> &amp; raise it manually as price climbs</span></div>
             <div class="stop-rule hard-exit">⏰ Hard exit Thu 2:30 PM CT regardless</div>
           </div>
         </div>
