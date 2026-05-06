@@ -308,7 +308,15 @@ function analyze() {
       </div>
       <div class="pick-footer">
         <div class="rr-box"><div class="rr-label">Reward:Risk</div><div class="rr-val">${s.rr}:1</div></div>
-        <div class="exit-box"><div class="exit-title">Exit Rules</div>Move stop to BE at +2% gain<br>Hard exit Thu 2:30 PM CT</div>
+        <div class="exit-box">
+          <div class="exit-title">Exit Rules</div>
+          <div class="stop-rules">
+            <div class="stop-rule"><span class="stop-label">Initial Stop:</span> <span class="stop-val red">$${s.st}</span></div>
+            <div class="stop-rule"><span class="stop-label">Breakeven Stop <span class="stop-trigger">(at +2% / $${Math.round(s.en*1.02*100)/100})</span>:</span> <span class="stop-val yellow">$${s.en}</span></div>
+            <div class="stop-rule"><span class="stop-label">Trailing Stop <span class="stop-trigger">(at +2%)</span>:</span> <span class="stop-val blue">$${Math.round((s.en*1.02 - s.ri)*100)/100} → moves up with price</span></div>
+            <div class="stop-rule hard-exit">⏰ Hard exit Thu 2:30 PM CT</div>
+          </div>
+        </div>
       </div>
     `;
     container.appendChild(card);
