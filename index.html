@@ -237,6 +237,7 @@ function parseCSV(text) {
     const ps=(d5>=5&&d5<=15)?10:(d5>15&&d5<=25)?7:(d5<5?3:4);
     const tr=(hi&&lo)?(hi-lo):0, pr2=(ph&&pl)?(ph-pl):0;
     const re=(tr>0&&pr2>0)?tr/pr2:null;
+    if(re!==null&&re<1.0){excluded.push({s:sy,r:`Range exp ${re.toFixed(2)}x < 1.0x`});continue;}
     const res=re===null?0:re>=2?25:re>=1.5?20:re>=1.25?15:re>=1?10:5;
     const ts=ms+gs+rs+ps+res;
     const tg=Math.round((en+ri*1.5)*100)/100;
