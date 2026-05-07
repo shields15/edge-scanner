@@ -229,6 +229,7 @@ function parseCSV(text) {
     if(la<=m5){excluded.push({s:sy,r:`Below 50MA $${m5.toFixed(2)}`});continue;}
     if(a2>18){excluded.push({s:sy,r:`${a2.toFixed(1)}% above 20MA`});continue;}
     if(d5<1.0){excluded.push({s:sy,r:`${d5.toFixed(1)}% below 52W high`});continue;}
+    if(!isNaN(ph)&&la<=ph){excluded.push({s:sy,r:`No breakout: $${la} <= prev high $${ph}`});continue;}
     if(ri<=0){excluded.push({s:sy,r:'Invalid stop'});continue;}
     const ms=(a2>0&&a5>0)?30:(a2>0?15:0);
     const gs=gp>=2.0?20:gp>=1.0?15:10;
