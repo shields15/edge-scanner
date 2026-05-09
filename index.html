@@ -120,6 +120,9 @@
       <div class="spy-price" id="spyPrice">Loading...</div>
       <div class="spy-pct" id="spyPct"></div>
     </div>
+    <div style="text-align:center">
+      <div id="spyMA" style="font-size:13px; font-weight:700; letter-spacing:0.5px;">Calculating 20MA...</div>
+    </div>
     <div style="text-align:right">
       <div class="spy-status" id="spyStatus"></div>
       <div class="spy-refresh">Auto-refreshes every 60s</div>
@@ -213,25 +216,29 @@ function checkORBWindow() {
 async function fetchSPY() {
   const sources = [
     async () => {
-      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2d';
+      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=60d';
       const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
       const json = await r.json();
-      const meta = json.chart.result[0].meta;
-      const currentPrice = meta.regularMarketPrice;
-      const prevClose = meta.chartPreviousClose || meta.previousClose;
+      const result = json.chart.result[0];
+      const closes = result.indicators.quote[0].close.filter(v => v != null);
+      const currentPrice = closes[closes.length - 1];
+      const prevClose = closes[closes.length - 2];
       const changePct = ((currentPrice - prevClose) / prevClose) * 100;
-      return { currentPrice, prevClose, changePct, halt: changePct <= -1 };
+      const ma20 = closes.slice(-20).reduce((a,b) => a+b, 0) / 20;
+      return { currentPrice, prevClose, changePct, ma20, halt: changePct <= -1, aboveMA: currentPrice > ma20 };
     },
     async () => {
-      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=2d';
+      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=60d';
       const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
       const wrapper = await r.json();
       const json = JSON.parse(wrapper.contents);
-      const meta = json.chart.result[0].meta;
-      const currentPrice = meta.regularMarketPrice;
-      const prevClose = meta.chartPreviousClose || meta.previousClose;
+      const result = json.chart.result[0];
+      const closes = result.indicators.quote[0].close.filter(v => v != null);
+      const currentPrice = closes[closes.length - 1];
+      const prevClose = closes[closes.length - 2];
       const changePct = ((currentPrice - prevClose) / prevClose) * 100;
-      return { currentPrice, prevClose, changePct, halt: changePct <= -1 };
+      const ma20 = closes.slice(-20).reduce((a,b) => a+b, 0) / 20;
+      return { currentPrice, prevClose, changePct, ma20, halt: changePct <= -1, aboveMA: currentPrice > ma20 };
     }
   ];
   for (const src of sources) {
@@ -247,24 +254,42 @@ async function fetchSPY() {
 
 function updateSPY(d) {
   halted = d.halt;
+  spyBelowMA = d.aboveMA === false;
   const pct = d.changePct;
-  const color = pct <= -1 ? '#f87171' : pct < 0 ? '#fb923c' : '#4ade80';
+  const maOK = d.aboveMA !== false;
+  const color = (!maOK || halted) ? '#f87171' : pct < 0 ? '#fb923c' : '#4ade80';
   const bar = document.getElementById('spyBar');
-  bar.className = 'spy-bar' + (halted ? ' halt' : pct < 0 ? ' warn' : '');
+  bar.className = 'spy-bar' + ((halted || !maOK) ? ' halt' : pct < 0 ? ' warn' : '');
   bar.style.borderColor = color;
   document.getElementById('spyPrice').textContent = '$' + d.currentPrice.toFixed(2);
   document.getElementById('spyPct').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
   document.getElementById('spyPct').style.color = color;
+
+  // Show 20MA inline
+  const maEl = document.getElementById('spyMA');
+  if (maEl && d.ma20) {
+    const diff = ((d.currentPrice - d.ma20) / d.ma20 * 100).toFixed(1);
+    const aboveBelow = d.currentPrice > d.ma20 ? '▲' : '▼';
+    const maColor = d.currentPrice > d.ma20 ? '#4ade80' : '#f87171';
+    maEl.textContent = '20MA $' + d.ma20.toFixed(2) + '  ' + aboveBelow + ' ' + (diff > 0 ? '+' : '') + diff + '%';
+    maEl.style.color = maColor;
+  }
+
   const statusEl = document.getElementById('spyStatus');
-  if (halted) { statusEl.textContent = '🚨 TRADING HALTED'; statusEl.style.color = '#f87171'; }
-  else if (pct < 0) { statusEl.textContent = 'Caution — negative market'; statusEl.style.color = '#fb923c'; }
-  else { statusEl.textContent = 'Market OK'; statusEl.style.color = '#4ade80'; }
+  if (halted) { statusEl.textContent = '🚨 HALTED — SPY DOWN >1%'; statusEl.style.color = '#f87171'; }
+  else if (!maOK) { statusEl.textContent = '🚨 HALTED — SPY BELOW 20MA'; statusEl.style.color = '#f87171'; }
+  else if (pct < 0) { statusEl.textContent = '⚠️ Caution — negative day'; statusEl.style.color = '#fb923c'; }
+  else { statusEl.textContent = '✅ Regime OK — trade active'; statusEl.style.color = '#4ade80'; }
+
   document.getElementById('haltBanner').className = 'halt-banner' + (halted ? ' show' : '');
+  document.getElementById('spyDownBanner').style.display = (!halted && !maOK) ? 'block' : 'none';
+
   const offSeason = checkOffSeason();
   if (!offSeason) {
     const btn = document.getElementById('analyzeBtn');
-    btn.disabled = halted;
-    btn.textContent = halted ? 'TRADING HALTED — SPY DOWN > 1%' : 'FIND THE TRADE →';
+    const blocked = halted || !maOK;
+    btn.disabled = blocked;
+    btn.textContent = halted ? 'TRADING HALTED — SPY DOWN >1%' : !maOK ? 'TRADING HALTED — SPY BELOW 20MA' : 'FIND THE TRADE →';
   }
 }
 
