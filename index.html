@@ -329,24 +329,24 @@ function renderSignals(signals) {
 
   let html = `<table>
     <thead><tr>
-      <th>Symbol</th><th>Price</th><th>RSI(2)</th>
-      <th>vs 200MA</th><th>vs 50MA</th><th>5MA</th>
-      <th>Action</th><th>Alloc</th>
+      <th>Symbol</th><th>Price</th><th>RSI(2)</th><th>5MA Exit Trigger</th><th>Target (+1.5%)</th><th>Est. PnL</th><th>Action</th><th>Shares</th>
     </tr></thead><tbody>`;
 
   for (const s of signals) {
     const alloc = Math.floor(ACCOUNT / signals.length / s.price);
     const allocDol = (alloc * s.price).toFixed(0);
-    const exitNote = parseFloat(s.price) > parseFloat(s.ma5) ? 
-      '<span style="color:var(--yellow);font-size:10px">⚠ Near exit</span>' : 
-      '<span style="color:var(--green);font-size:10px">Hold</span>';
+    const target = (s.price * 1.015).toFixed(2);
+    const estPnl = (alloc * (s.price * 0.015)).toFixed(0);
+    const nearExit = parseFloat(s.price) > parseFloat(s.ma5);
+    const ma5Color = nearExit ? 'var(--yellow)' : 'var(--green)';
+    const ma5Note = nearExit ? ' ⚠' : '';
     html += `<tr>
       <td><strong style="color:var(--blue)">${s.sym}</strong></td>
-      <td>$${s.price}</td>
+      <td><strong>$${s.price}</strong></td>
       <td><span class="rsi-pill ${rsiClass(s.rsi)}">${s.rsi}</span></td>
-      <td class="pnl-pos">+${s.pctAbove200}%</td>
-      <td class="pnl-pos">+${s.pctAbove50}%</td>
-      <td>$${s.ma5}</td>
+      <td style="color:${ma5Color}"><strong>$${s.ma5}</strong><span style="font-size:10px">${ma5Note}</span><br><span style="font-size:10px;color:var(--muted)">close above = exit</span></td>
+      <td style="color:var(--green)"><strong>$${target}</strong><br><span style="font-size:10px;color:var(--muted)">+1.5% avg recovery</span></td>
+      <td class="pnl-pos"><strong>+$${Number(estPnl).toLocaleString()}</strong><br><span style="font-size:10px;color:var(--muted)">${alloc} sh × $${(s.price*0.015).toFixed(2)}</span></td>
       <td><span class="badge badge-buy">BUY OPEN</span></td>
       <td><strong>${alloc} sh</strong><br><span style="color:var(--muted);font-size:10px">~$${Number(allocDol).toLocaleString()}</span></td>
     </tr>`;
