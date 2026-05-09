@@ -110,7 +110,7 @@
 
   <div class="logo">
     <div class="logo-title">⚡ EDGE</div>
-    <div class="logo-sub">S&P 100 ORB Scanner — v3.1</div>
+    <div class="logo-sub">S&P 100 ORB Scanner — v3.2</div>
   </div>
 
   <!-- SPY BAR -->
@@ -144,7 +144,7 @@
 
   <!-- ORB INFO -->
   <div class="orb-info">
-    <strong>60-Min ORB System:</strong> Wait for the first 60 minutes of trading (9:30–10:30 AM ET) to complete. The ORB High and ORB Low are set. Entry = ORB High + $0.05. Stop = ORB Low − $0.10. Target = 2:1 risk-to-reward.<br>
+    <strong>60-Min ORB System:</strong> Wait for the first 60 minutes of trading (9:30–10:30 AM ET) to complete. ORB High and Low are set. <strong>Entry = Pullback to ORB High</strong> — wait for price to break above ORB High, pull back, and hold it as support. Stop = ORB Low − $0.10. Target = 2:1 risk-to-reward.<br>
     <strong>Paste your Barchart CSV at 9:30 AM CT</strong> using intraday High/Low from the first 60 minutes.
   </div>
 
@@ -368,7 +368,7 @@ function parseCSV(text) {
     const orbHigh = !isNaN(hi) ? hi : la;
     const orbLow  = !isNaN(lo) ? lo : la;
 
-    const entry  = Math.round((orbHigh + 0.05) * 100) / 100;
+    const entry  = Math.round(orbHigh * 100) / 100;  // Pullback entry: wait for price to return to ORB High as support
     const stop   = Math.round((orbLow  - 0.10) * 100) / 100;
     const risk   = Math.round((entry - stop) * 100) / 100;
 
