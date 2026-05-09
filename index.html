@@ -110,7 +110,7 @@
 
   <div class="logo">
     <div class="logo-title">⚡ EDGE</div>
-    <div class="logo-sub">S&P 100 ORB Scanner — v3.2</div>
+    <div class="logo-sub">S&P 100 ORB Scanner — v3.3</div>
   </div>
 
   <!-- SPY BAR -->
@@ -392,7 +392,7 @@ function parseCSV(text) {
     const maScore  = (a2 > 0 && a5 > 0) ? 30 : (a2 > 0 ? 15 : 0);
     const gapScore = gp >= 2.0 ? 25 : gp >= 1.5 ? 20 : gp >= 1.0 ? 15 : 0;
     const rsScore  = gp >= 2.0 ? 20 : gp >= 1.5 ? 15 : 10;
-    const w52Score = (d5 >= 5 && d5 <= 15) ? 15 : (d5 > 15 && d5 <= 25) ? 10 : (d5 < 5 ? 3 : 7);
+    const w52Score = (d5 >= 5 && d5 <= 15) ? 15 : (d5 > 15) ? 10 : 3;  // >25% below 52W still gets 10pts
     const total    = maScore + gapScore + rsScore + w52Score;
 
     // Breakeven and trailing stop levels
