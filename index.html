@@ -2,364 +2,560 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Edge v4 — Mean Reversion System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ EDGE — S&P 100 Scanner</title>
 <style>
-  :root {
-    --bg: #07111f; --card: #0d1f35; --border: #1e3a5f;
-    --green: #4ade80; --red: #f87171; --yellow: #fbbf24;
-    --blue: #60a5fa; --text: #e2e8f0; --muted: #64748b;
-  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; min-height: 100vh; padding: 20px; }
-  
-  .header { text-align: center; margin-bottom: 24px; }
-  .header h1 { font-size: 28px; font-weight: 900; color: var(--green); letter-spacing: 2px; }
-  .header .sub { color: var(--muted); font-size: 12px; margin-top: 4px; letter-spacing: 1px; }
+  body { min-height: 100vh; background: #060f1e; color: #f0f9ff; font-family: Arial, sans-serif; padding: 20px 16px; }
+  .wrap { max-width: 700px; margin: 0 auto; }
+  .logo { text-align: center; margin-bottom: 20px; }
+  .logo-title { font-size: 32px; font-weight: 900; color: #0ea5e9; }
+  .logo-sub { font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
 
-  .spy-bar { background: var(--card); border: 1.5px solid var(--green); border-radius: 12px; padding: 14px 20px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-  .spy-bar.halt { border-color: var(--red); background: #1a0505; }
-  .spy-left { display: flex; align-items: center; gap: 20px; }
-  .spy-label { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 1px; }
-  .spy-price { font-size: 22px; font-weight: 900; }
+  /* SPY BAR */
+  .spy-bar { background: #0a1628; border: 1px solid #4ade80; border-radius: 12px; padding: 12px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .spy-bar.halt { background: #1a0505; border-color: #f87171; }
+  .spy-bar.warn { border-color: #fb923c; }
+  .spy-left { display: flex; align-items: center; gap: 12px; }
+  .spy-label { font-size: 13px; font-weight: 800; color: #94a3b8; }
+  .spy-price { font-size: 20px; font-weight: 900; color: #f0f9ff; }
   .spy-pct { font-size: 14px; font-weight: 700; }
-  .spy-ma { font-size: 12px; font-weight: 700; }
-  .spy-status { font-size: 13px; font-weight: 700; }
-  .spy-refresh { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .spy-status { font-size: 11px; }
+  .spy-refresh { font-size: 10px; color: #334155; margin-top: 2px; }
 
-  .regime-banner { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 12px; display: none; }
+  /* REGIME BANNER */
+  .regime-banner { border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; text-align: center; font-size: 12px; font-weight: 700; display: none; }
   .regime-banner.show { display: block; }
-  .regime-banner.halt  { background: #1a0505; border: 1.5px solid var(--red); color: var(--red); }
-  .regime-banner.info  { background: #0a1628; border: 1.5px solid var(--yellow); color: var(--yellow); }
+  .regime-banner.off-season { background: #1a100a; border: 1px solid #f59e0b; color: #f59e0b; }
+  .regime-banner.spy-down { background: #1a0505; border: 1px solid #f87171; color: #f87171; }
+  .regime-banner.orb-wait { background: #0a1628; border: 1px solid #22d3ee; color: #22d3ee; }
 
-  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
-  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
-  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
-  .stat-val { font-size: 20px; font-weight: 900; }
+  /* HALT BANNER */
+  .halt-banner { background: #1a0505; border: 2px solid #f87171; border-radius: 14px; padding: 20px; margin-bottom: 20px; text-align: center; display: none; }
+  .halt-banner.show { display: block; }
+  .halt-title { font-size: 20px; font-weight: 900; color: #f87171; }
+  .halt-sub { font-size: 13px; color: #94a3b8; margin-top: 6px; }
 
-  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
-  .panel-title { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-  .panel-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  /* ORB INFO BOX */
+  .orb-info { background: #040d1a; border: 1px solid #22d3ee; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px; color: #7dd3fc; line-height: 1.7; }
+  .orb-info strong { color: #22d3ee; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { color: var(--muted); font-weight: 700; letter-spacing: 1px; text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; }
-  td { padding: 10px 10px; border-bottom: 1px solid rgba(30,58,95,0.5); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,0.02); }
+  textarea { width: 100%; height: 120px; background: #0a1628; border: 1px solid #1e3a5f; border-radius: 10px; color: #94a3b8; font-size: 12px; padding: 12px; font-family: monospace; resize: vertical; }
+  .btn { width: 100%; padding: 14px; background: linear-gradient(135deg,#0ea5e9,#0284c7); border: none; border-radius: 10px; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; margin-top: 10px; margin-bottom: 24px; }
+  .btn:disabled { background: #1e293b; color: #475569; cursor: not-allowed; }
 
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
-  .badge-buy    { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
-  .badge-hold   { background: rgba(96,165,250,0.15); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
-  .badge-exit   { background: rgba(251,191,36,0.15); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+  /* STATS */
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 24px; }
+  .stat-box { background: #0a1628; border-radius: 10px; padding: 12px 14px; text-align: center; border: 1px solid #0f1f35; }
+  .stat-label { font-size: 10px; color: #475569; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-val { font-size: 18px; font-weight: 900; }
 
-  .rsi-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 900; }
-  .rsi-red  { background: rgba(248,113,113,0.2); color: var(--red); }
-  .rsi-amber{ background: rgba(251,191,36,0.2); color: var(--yellow); }
-  .rsi-green{ background: rgba(74,222,128,0.2); color: var(--green); }
+  .no-picks { background: #120808; border: 1px solid #7f1d1d; border-radius: 14px; padding: 28px; text-align: center; color: #f87171; font-size: 18px; font-weight: 700; }
 
-  .btn { background: var(--green); color: #000; border: none; border-radius: 8px; padding: 12px 28px; font-size: 13px; font-weight: 900; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; }
-  .btn:hover { opacity: 0.85; }
-  .btn:disabled { background: var(--muted); cursor: not-allowed; opacity: 0.5; }
-  .btn-red { background: var(--red); }
+  /* PICK CARD */
+  .pick-card { background: linear-gradient(160deg,#0c2340,#0a1628); border-radius: 18px; padding: 24px; margin-bottom: 20px; border: 2px solid #1e3a5f; }
+  .pick-card.top { border-color: #0ea5e9; }
+  .pick-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .pick-rank { font-size: 10px; color: #0ea5e9; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+  .pick-sym { font-size: 56px; font-weight: 900; line-height: 1; margin-bottom: 8px; }
+  .pick-meta { font-size: 12px; color: #7dd3fc; display: flex; flex-wrap: wrap; gap: 6px 12px; }
+  .pick-score-label { font-size: 10px; color: #475569; text-transform: uppercase; }
+  .pick-score { font-size: 44px; font-weight: 900; line-height: 1; }
+  .pick-score-max { font-size: 10px; color: #475569; }
 
-  .alloc-box { background: rgba(74,222,128,0.08); border: 1.5px solid rgba(74,222,128,0.3); border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; }
-  .alloc-title { font-size: 10px; color: var(--green); font-weight: 700; letter-spacing: 2px; margin-bottom: 8px; }
-  .alloc-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; font-size: 12px; }
-  .alloc-item { color: var(--muted); }
-  .alloc-item span { color: var(--text); font-weight: 700; }
+  /* OCO BOX */
+  .oco-box { background: #040d1a; border: 2px solid #22d3ee; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .oco-title { font-size: 10px; color: #22d3ee; font-weight: 700; text-transform: uppercase; margin-bottom: 14px; }
+  .oco-prices { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .oco-cell { background: #051525; border-radius: 8px; padding: 12px 8px; text-align: center; }
+  .oco-cell-label { font-size: 9px; color: #475569; text-transform: uppercase; margin-bottom: 6px; }
+  .oco-cell-val { font-size: 22px; font-weight: 900; }
+  .oco-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; border-top: 1px solid #0f2a3f; padding-top: 14px; }
+  .oco-stat { text-align: center; }
+  .oco-stat-label { font-size: 9px; color: #475569; text-transform: uppercase; margin-bottom: 4px; }
+  .oco-stat-val { font-size: 14px; font-weight: 800; }
 
-  .exit-rule { background: rgba(251,191,36,0.06); border-left: 3px solid var(--yellow); padding: 10px 14px; margin: 6px 0; border-radius: 4px; font-size: 12px; color: #cbd5e1; }
+  /* EXIT BOX */
+  .pick-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .rr-box { background: #040d1a; border-radius: 10px; padding: 12px 14px; }
+  .rr-label { font-size: 9px; color: #475569; text-transform: uppercase; margin-bottom: 4px; }
+  .rr-val { font-size: 22px; font-weight: 900; color: #fbbf24; }
+  .exit-box { background: #040d1a; border-radius: 10px; padding: 12px 14px; }
+  .exit-title { color: #22d3ee; font-weight: 700; font-size: 9px; text-transform: uppercase; margin-bottom: 8px; }
+  .stop-step { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+  .step-num { background: #0ea5e9; color: #fff; font-size: 10px; font-weight: 900; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-body { font-size: 10px; color: #64748b; line-height: 1.5; }
+  .step-label { color: #94a3b8; font-weight: 600; }
+  .stop-val { font-weight: 800; }
+  .stop-val.red { color: #f87171; }
+  .stop-val.yellow { color: #fbbf24; }
+  .stop-val.blue { color: #22d3ee; }
+  .hard-exit { font-size: 10px; color: #475569; border-top: 1px solid #0f172a; padding-top: 6px; margin-top: 4px; }
 
-  .loading { color: var(--muted); font-size: 13px; text-align: center; padding: 30px; }
-  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
-  
-  .pnl-pos { color: var(--green); font-weight: 700; }
-  .pnl-neg { color: var(--red); font-weight: 700; }
-  
-  @media(max-width:768px) { .stats-row { grid-template-columns: repeat(2,1fr); } .alloc-grid { grid-template-columns: 1fr 1fr; } }
+  /* EXCLUDED */
+  .excl-btn { width: 100%; padding: 10px; background: #0a1628; border: 1px solid #1e3a5f; border-radius: 8px; color: #475569; font-size: 12px; cursor: pointer; margin-bottom: 8px; }
+  .excl-list { background: #0a1628; border-radius: 12px; padding: 10px 14px; margin-bottom: 20px; display: none; }
+  .excl-list.show { display: block; }
+  .excl-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #0f172a; font-size: 12px; }
+  .excl-sym { color: #f87171; font-weight: 700; min-width: 60px; }
+  .excl-reason { color: #475569; }
+
+  /* SYSTEM INFO */
+  .sys-info { background: #040d1a; border: 1px solid #1e3a5f; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; font-size: 11px; color: #475569; line-height: 1.8; }
+  .sys-info strong { color: #7dd3fc; }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div class="header">
-  <h1>⚡ EDGE v4</h1>
-  <div class="sub">RSI(2) MEAN REVERSION · S&P 100 · 68% WIN RATE SYSTEM</div>
-</div>
+  <div class="logo">
+    <div class="logo-title">⚡ EDGE</div>
+    <div class="logo-sub">S&P 100 ORB Scanner — v3.3</div>
+  </div>
 
-<!-- SPY BAR -->
-<div class="spy-bar" id="spyBar">
-  <div class="spy-left">
-    <div>
+  <!-- SPY BAR -->
+  <div class="spy-bar" id="spyBar">
+    <div class="spy-left">
       <div class="spy-label">SPY</div>
-      <div class="spy-price" id="spyPrice">--</div>
+      <div class="spy-price" id="spyPrice">Loading...</div>
+      <div class="spy-pct" id="spyPct"></div>
     </div>
-    <div class="spy-pct" id="spyPct"></div>
-    <div class="spy-ma" id="spyMA" style="color:var(--muted)">Loading 20MA...</div>
-  </div>
-  <div style="text-align:right">
-    <div class="spy-status" id="spyStatus">Loading...</div>
-    <div class="spy-refresh">Auto-refreshes every 60s</div>
-  </div>
-</div>
-
-<div class="regime-banner halt" id="haltBanner">🚨 SPY BELOW 20MA OR DOWN >1% — NO NEW ENTRIES TODAY</div>
-<div class="regime-banner info" id="offBanner">🌴 OFF-SEASON (Jul–Sep) — System paused. Resume October.</div>
-
-<!-- STATS -->
-<div class="stats-row">
-  <div class="stat-card">
-    <div class="stat-label">Backtest Win Rate</div>
-    <div class="stat-val" style="color:var(--green)">68%</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Avg Weekly PnL</div>
-    <div class="stat-val" style="color:var(--green)">$500</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Avg Hold Time</div>
-    <div class="stat-val" style="color:var(--blue)">3.3 days</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Strategy</div>
-    <div class="stat-val" style="font-size:13px;color:var(--yellow)">Mean Rev</div>
-  </div>
-</div>
-
-<!-- TODAY'S SIGNALS -->
-<div class="panel">
-  <div class="panel-title"><div class="dot"></div> TODAY'S SIGNALS — ENTER AT OPEN
-    <span id="signalCount" style="margin-left:auto;color:var(--green);font-size:13px;"></span>
-  </div>
-  <div id="allocBox" class="alloc-box" style="display:none">
-    <div class="alloc-title">📊 POSITION SIZING</div>
-    <div class="alloc-grid">
-      <div class="alloc-item">Signals: <span id="allocN">--</span></div>
-      <div class="alloc-item">Per trade: <span id="allocAmt">--</span></div>
-      <div class="alloc-item">Shares each: <span id="allocNote">varies by price</span></div>
+    <div style="text-align:center">
+      <div id="spyMA" style="font-size:13px; font-weight:700; letter-spacing:0.5px;">Calculating 20MA...</div>
+    </div>
+    <div style="text-align:right">
+      <div class="spy-status" id="spyStatus"></div>
+      <div class="spy-refresh">Auto-refreshes every 60s</div>
     </div>
   </div>
-  <div id="signalsTable"><div class="loading">⟳ Loading signals...</div></div>
-</div>
 
-<!-- SYSTEM RULES -->
-<div class="panel">
-  <div class="panel-title"><div class="dot" style="background:var(--yellow)"></div> SYSTEM RULES</div>
-  <div class="exit-rule"><strong>ENTRY:</strong> Next morning market open. Enter ALL stocks with RSI(2) &lt; 5 that are above their 200MA and 50MA. Split $25,000 equally across all signals.</div>
-  <div class="exit-rule"><strong>EXIT SIGNAL:</strong> Close position when RSI(2) closes above 65 <em>OR</em> price closes above its 5-day moving average — whichever comes first.</div>
-  <div class="exit-rule"><strong>MAX HOLD:</strong> 10 days. Close at open of day 11 regardless.</div>
-  <div class="exit-rule"><strong>SPY FILTER:</strong> Only enter new positions when SPY is above its 20-day MA. Do NOT close existing positions based on SPY — exit only on RSI/5MA signal.</div>
-  <div class="exit-rule"><strong>CATASTROPHIC STOP:</strong> If any position drops 8% from entry, close it immediately. This is a safety valve only — not a regular stop.</div>
-  <div class="exit-rule"><strong>OFF-SEASON:</strong> No new entries July, August, September.</div>
-</div>
+  <!-- REGIME BANNERS -->
+  <div class="regime-banner off-season" id="offSeasonBanner">
+    🌴 OFF-SEASON (Jul–Sep) — System inactive. No trades this month.
+  </div>
+  <div class="regime-banner spy-down" id="spyDownBanner">
+    🚨 SPY BELOW 20MA — Trading halted. Wait for regime to recover.
+  </div>
+  <div class="regime-banner orb-wait" id="orbWaitBanner">
+    ⏱ WAIT FOR 60-MIN ORB — Do not paste CSV until 9:30 AM CT (10:30 AM ET). Let the opening range form first.
+  </div>
 
-<!-- HOW TO CHECK EXIT CONDITIONS EACH DAY -->
-<div class="panel">
-  <div class="panel-title"><div class="dot" style="background:var(--blue)"></div> DAILY WORKFLOW</div>
-  <div class="exit-rule">📅 <strong>Before market open (9:25 CT):</strong> Check SPY — is it above its 20-day MA? If yes, note any new RSI(2)&lt;5 signals from yesterday's close to enter at open.</div>
-  <div class="exit-rule">🔔 <strong>At open (9:30 CT):</strong> Enter any new signals at market price. Reallocate: divide $25k by total number of open positions including new ones.</div>
-  <div class="exit-rule">📊 <strong>After close (4:15 CT):</strong> Check each open position — did RSI(2) close above 65? Did price close above its 5-day MA? If yes to either → close that position tomorrow at open.</div>
-  <div class="exit-rule">📋 <strong>This page:</strong> Refreshes automatically. Shows live signals, SPY regime, and your open position status.</div>
+  <div class="halt-banner" id="haltBanner">
+    <div class="halt-title">🚨 NO TRADES TODAY</div>
+    <div class="halt-sub">SPY is down more than 1% — system halt active. Stand down.</div>
+  </div>
+
+  <!-- ORB INFO -->
+  <div class="orb-info">
+    <strong>60-Min ORB System:</strong> Wait for the first 60 minutes of trading (9:30–10:30 AM ET) to complete. ORB High and Low are set. <strong>Entry = Pullback to ORB High</strong> — wait for price to break above ORB High, pull back, and hold it as support. Stop = ORB Low − $0.10. Target = 2:1 risk-to-reward.<br>
+    <strong>Paste your Barchart CSV at 9:30 AM CT</strong> using intraday High/Low from the first 60 minutes.
+  </div>
+
+  <!-- SYSTEM RULES -->
+  <div class="sys-info">
+    <strong>Active Filters:</strong> Gap 1–3% · Stock above 20MA &amp; 50MA · SPY above 20MA · 1%+ below 52W high · 20MA above 50MA · Min risk 0.8% of price<br>
+    <strong>R:R Ratio:</strong> 2:1 &nbsp;|&nbsp; <strong>Account:</strong> $25,000 &nbsp;|&nbsp; <strong>Off-Season:</strong> July · August · September
+  </div>
+
+  <textarea id="csvInput" placeholder="Paste Barchart CSV here (include header row) — after 60-min ORB completes at 9:30 AM CT..."></textarea>
+  <button class="btn" id="analyzeBtn" onclick="analyze()">FIND THE TRADE →</button>
+
+  <div id="statsRow" style="display:none">
+    <div class="stats">
+      <div class="stat-box"><div class="stat-label">Passed</div><div class="stat-val" id="statPassed" style="color:#4ade80">0</div></div>
+      <div class="stat-box"><div class="stat-label">Eliminated</div><div class="stat-val" id="statElim" style="color:#f87171">0</div></div>
+      <div class="stat-box"><div class="stat-label">Signal</div><div class="stat-val" id="statSignal">—</div></div>
+    </div>
+  </div>
+
+  <div id="noPicks" style="display:none" class="no-picks">No Valid Setups Today — Sit Out</div>
+  <div id="picksContainer"></div>
+
+  <button class="excl-btn" id="exclBtn" style="display:none" onclick="toggleExcl()">Show Eliminated (<span id="exclCount">0</span>)</button>
+  <div class="excl-list" id="exclList"></div>
+
 </div>
 
 <script>
-const TICKERS = ['AAPL','ABBV','ABT','ACN','ADBE','AMAT','AMD','AMGN','AMT','AVGO',
-'AXP','BA','BAC','BK','BKNG','BLK','BMY','C','CAT','CL','CMCSA','COF','COP','COST',
-'CRM','CSCO','CVS','CVX','DE','DHR','DIS','DUK','EMR','FDX','GD','GE','GILD','GM',
-'GOOG','GOOGL','GS','HD','HON','IBM','INTC','INTU','ISRG','JNJ','JPM','KO','LIN',
-'LLY','LMT','LOW','LRCX','MA','MCD','MDLZ','MDT','META','MMM','MO','MRK','MRVL',
-'MS','MSFT','MU','NEE','NFLX','NKE','NOW','NVDA','ORCL','PEP','PFE','PG','PLTR',
-'PM','PYPL','QCOM','RTX','SBUX','SCHW','SO','SPG','T','TMO','TMUS','TSLA','TXN',
-'UBER','UNH','UNP','UPS','USB','V','VZ','WFC','WMT','XOM'];
-
 const ACCOUNT = 25000;
-let spyHalted = false;
-let allSignals = [];
+const RR = 2.0;  // 2:1 reward-to-risk
+let halted = false;
+let spyBelowMA = false;
+let exclShowing = false;
+let lastExcluded = [];
 
-// ─── RSI(2) ───────────────────────────────────────────────────
-function calcRSI2(closes) {
-  if (closes.length < 3) return 50;
-  const recent = closes.slice(-10);
-  let gains = 0, losses = 0;
-  for (let i = 1; i < recent.length; i++) {
-    const d = recent[i] - recent[i-1];
-    if (d > 0) gains += d; else losses -= d;
+// ---- OFF-SEASON CHECK ----
+function checkOffSeason() {
+  const month = new Date().getMonth() + 1; // 1-12
+  const isOff = [7, 8, 9].includes(month);
+  document.getElementById('offSeasonBanner').classList.toggle('show', isOff);
+  if (isOff) {
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('analyzeBtn').textContent = 'OFF-SEASON — No Trades Jul/Aug/Sep';
   }
-  const period = Math.min(2, recent.length - 1);
-  const lastTwo = recent.slice(-period-1);
-  let g2 = 0, l2 = 0;
-  for (let i = 1; i < lastTwo.length; i++) {
-    const d = lastTwo[i] - lastTwo[i-1];
-    if (d > 0) g2 += d; else l2 -= d;
-  }
-  g2 /= period; l2 /= period;
-  if (l2 === 0) return 100;
-  return 100 - (100 / (1 + g2/l2));
+  return isOff;
 }
 
-function avg(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+// ---- ORB WINDOW CHECK ----
+function checkORBWindow() {
+  // Show reminder before 9:30 AM CT (10:30 AM ET = 14:30 UTC)
+  const now = new Date();
+  const utcH = now.getUTCHours();
+  const utcM = now.getUTCMinutes();
+  const totalUTC = utcH * 60 + utcM;
+  // 14:30 UTC = 10:30 AM ET = 9:30 AM CT
+  const orbReadyUTC = 14 * 60 + 30;
+  // Market open 13:30 UTC = 9:30 AM ET = 8:30 AM CT
+  const marketOpenUTC = 13 * 60 + 30;
+  const isWeekday = now.getUTCDay() >= 1 && now.getUTCDay() <= 5;
+  const beforeORB = isWeekday && totalUTC >= marketOpenUTC && totalUTC < orbReadyUTC;
+  document.getElementById('orbWaitBanner').classList.toggle('show', beforeORB);
+}
 
-// ─── FETCH STOCK DATA ─────────────────────────────────────────
-async function fetchStock(sym) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=250d`;
-  const proxies = [
-    `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
-  ];
-  for (const proxy of proxies) {
-    try {
-      const r = await fetch(proxy, {signal: AbortSignal.timeout(8000)});
-      let json;
-      if (proxy.includes('allorigins')) {
-        const w = await r.json(); json = JSON.parse(w.contents);
-      } else { json = await r.json(); }
+// ---- SPY ----
+async function fetchSPY() {
+  const sources = [
+    async () => {
+      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=60d';
+      const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+      const json = await r.json();
       const result = json.chart.result[0];
-      const closes = result.indicators.quote[0].close.filter(v=>v!=null);
-      const current = result.meta.regularMarketPrice || closes[closes.length-1];
-      return { closes, current };
+      const closes = result.indicators.quote[0].close.filter(v => v != null);
+      const currentPrice = closes[closes.length - 1];
+      const prevClose = closes[closes.length - 2];
+      const changePct = ((currentPrice - prevClose) / prevClose) * 100;
+      const ma20 = closes.slice(-20).reduce((a,b) => a+b, 0) / 20;
+      return { currentPrice, prevClose, changePct, ma20, halt: changePct <= -1, aboveMA: currentPrice > ma20 };
+    },
+    async () => {
+      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=60d';
+      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
+      const wrapper = await r.json();
+      const json = JSON.parse(wrapper.contents);
+      const result = json.chart.result[0];
+      const closes = result.indicators.quote[0].close.filter(v => v != null);
+      const currentPrice = closes[closes.length - 1];
+      const prevClose = closes[closes.length - 2];
+      const changePct = ((currentPrice - prevClose) / prevClose) * 100;
+      const ma20 = closes.slice(-20).reduce((a,b) => a+b, 0) / 20;
+      return { currentPrice, prevClose, changePct, ma20, halt: changePct <= -1, aboveMA: currentPrice > ma20 };
+    }
+  ];
+  for (const src of sources) {
+    try {
+      const d = await src();
+      if (d && d.currentPrice && d.currentPrice > 0) { updateSPY(d); return; }
     } catch(e) { continue; }
   }
-  return null;
+  document.getElementById('spyPrice').textContent = 'Unavailable';
+  document.getElementById('spyStatus').textContent = 'SPY feed error — check manually';
+  document.getElementById('spyStatus').style.color = '#f87171';
 }
 
-// ─── SPY ──────────────────────────────────────────────────────
-async function fetchSPY() {
-  const d = await fetchStock('SPY');
-  if (!d) {
-    document.getElementById('spyPrice').textContent = 'Error';
-    document.getElementById('spyStatus').textContent = 'SPY feed error — check manually';
-    return;
-  }
-  const closes = d.closes;
-  const current = d.current;
-  const prev = closes[closes.length-2];
-  const pct = ((current-prev)/prev)*100;
-  const ma20 = avg(closes.slice(-20));
-  const aboveMA = current > ma20;
-  const haltDay = pct <= -1;
-  spyHalted = !aboveMA || haltDay;
-
-  const color = spyHalted ? '#f87171' : pct<0 ? '#fbbf24' : '#4ade80';
+function updateSPY(d) {
+  halted = d.halt;
+  spyBelowMA = d.aboveMA === false;
+  const pct = d.changePct;
+  const maOK = d.aboveMA !== false;
+  const color = (!maOK || halted) ? '#f87171' : pct < 0 ? '#fb923c' : '#4ade80';
   const bar = document.getElementById('spyBar');
-  bar.className = 'spy-bar' + (spyHalted ? ' halt' : '');
+  bar.className = 'spy-bar' + ((halted || !maOK) ? ' halt' : pct < 0 ? ' warn' : '');
   bar.style.borderColor = color;
-  document.getElementById('spyPrice').textContent = '$'+current.toFixed(2);
-  document.getElementById('spyPrice').style.color = color;
-  document.getElementById('spyPct').textContent = (pct>=0?'+':'')+pct.toFixed(2)+'%';
+  document.getElementById('spyPrice').textContent = '$' + d.currentPrice.toFixed(2);
+  document.getElementById('spyPct').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
   document.getElementById('spyPct').style.color = color;
 
+  // Show 20MA inline
   const maEl = document.getElementById('spyMA');
-  const diff = ((current-ma20)/ma20*100).toFixed(1);
-  const arrow = current>ma20 ? '▲' : '▼';
-  maEl.textContent = `20MA $${ma20.toFixed(2)} ${arrow} ${diff}%`;
-  maEl.style.color = aboveMA ? '#4ade80' : '#f87171';
+  if (maEl && d.ma20) {
+    const diff = ((d.currentPrice - d.ma20) / d.ma20 * 100).toFixed(1);
+    const aboveBelow = d.currentPrice > d.ma20 ? '▲' : '▼';
+    const maColor = d.currentPrice > d.ma20 ? '#4ade80' : '#f87171';
+    maEl.textContent = '20MA $' + d.ma20.toFixed(2) + '  ' + aboveBelow + ' ' + (diff > 0 ? '+' : '') + diff + '%';
+    maEl.style.color = maColor;
+  }
 
   const statusEl = document.getElementById('spyStatus');
-  if (haltDay) { statusEl.textContent = '🚨 HALTED — Down >1%'; statusEl.style.color='#f87171'; }
-  else if (!aboveMA) { statusEl.textContent = '🚨 HALTED — Below 20MA'; statusEl.style.color='#f87171'; }
-  else { statusEl.textContent = '✅ Regime OK — entries allowed'; statusEl.style.color='#4ade80'; }
+  if (halted) { statusEl.textContent = '🚨 HALTED — SPY DOWN >1%'; statusEl.style.color = '#f87171'; }
+  else if (!maOK) { statusEl.textContent = '🚨 HALTED — SPY BELOW 20MA'; statusEl.style.color = '#f87171'; }
+  else if (pct < 0) { statusEl.textContent = '⚠️ Caution — negative day'; statusEl.style.color = '#fb923c'; }
+  else { statusEl.textContent = '✅ Regime OK — trade active'; statusEl.style.color = '#4ade80'; }
 
-  document.getElementById('haltBanner').className = 'regime-banner halt' + (spyHalted ? ' show' : '');
+  document.getElementById('haltBanner').className = 'halt-banner' + (halted ? ' show' : '');
+  document.getElementById('spyDownBanner').style.display = (!halted && !maOK) ? 'block' : 'none';
 
-  // Check off season
-  const mo = new Date().getMonth()+1;
-  document.getElementById('offBanner').className = 'regime-banner info' + ([7,8,9].includes(mo) ? ' show' : '');
+  const offSeason = checkOffSeason();
+  if (!offSeason) {
+    const btn = document.getElementById('analyzeBtn');
+    const blocked = halted || !maOK;
+    btn.disabled = blocked;
+    btn.textContent = halted ? 'TRADING HALTED — SPY DOWN >1%' : !maOK ? 'TRADING HALTED — SPY BELOW 20MA' : 'FIND THE TRADE →';
+  }
 }
 
-// ─── SCAN SIGNALS ─────────────────────────────────────────────
-async function scanSignals() {
-  document.getElementById('signalsTable').innerHTML = '<div class="loading">⟳ Scanning S&P 100 for RSI(2) signals...</div>';
-  document.getElementById('signalCount').textContent = '';
-
-  const results = [];
-  const batchSize = 10;
-
-  for (let i = 0; i < TICKERS.length; i += batchSize) {
-    const batch = TICKERS.slice(i, i+batchSize);
-    const fetches = batch.map(async sym => {
-      const d = await fetchStock(sym);
-      if (!d || d.closes.length < 210) return null;
-      const closes = d.closes;
-      const n = closes.length;
-      const price = d.current;
-      const ma200 = avg(closes.slice(-200));
-      const ma50 = avg(closes.slice(-50));
-      const ma5 = avg(closes.slice(-5));
-
-      if (price < ma200 || price < ma50) return null;
-
-      const rsi = calcRSI2(closes.slice(-15));
-      if (rsi >= 10) return null;
-
-      const pctAbove200 = ((price-ma200)/ma200*100).toFixed(1);
-      const pctAbove50 = ((price-ma50)/ma50*100).toFixed(1);
-
-      return { sym, price, rsi: Math.round(rsi*10)/10, ma200: ma200.toFixed(2), 
-               ma50: ma50.toFixed(2), ma5: ma5.toFixed(2), 
-               pctAbove200, pctAbove50 };
-    });
-    const batch_results = await Promise.all(fetches);
-    batch_results.forEach(r => { if (r) results.push(r); });
-    // small delay between batches
-    await new Promise(res => setTimeout(res, 200));
-  }
-
-  results.sort((a,b) => a.rsi - b.rsi);
-  allSignals = results;
-  renderSignals(results);
-}
-
-function renderSignals(signals) {
-  const el = document.getElementById('signalsTable');
-  const count = document.getElementById('signalCount');
-
-  if (signals.length === 0) {
-    el.innerHTML = '<div class="empty">No RSI(2) < 10 signals today. Check back tomorrow.</div>';
-    count.textContent = '0 signals';
-    document.getElementById('allocBox').style.display='none';
-    return;
-  }
-
-  count.textContent = `${signals.length} signal${signals.length>1?'s':''} found`;
-  const allocPer = (ACCOUNT / signals.length).toFixed(0);
-  document.getElementById('allocBox').style.display = '';
-  document.getElementById('allocN').textContent = signals.length;
-  document.getElementById('allocAmt').textContent = `$${Number(allocPer).toLocaleString()}`;
-
-  const rsiClass = r => r < 1 ? 'rsi-red' : r < 5 ? 'rsi-amber' : 'rsi-green';
-
-  let html = `<table>
-    <thead><tr>
-      <th>Symbol</th><th>Price</th><th>RSI(2)</th><th>5MA Exit Trigger</th><th>Target (+1.5%)</th><th>Est. PnL</th><th>Action</th><th>Shares</th>
-    </tr></thead><tbody>`;
-
-  for (const s of signals) {
-    const alloc = Math.floor(ACCOUNT / signals.length / s.price);
-    const allocDol = (alloc * s.price).toFixed(0);
-    const target = (s.price * 1.015).toFixed(2);
-    const estPnl = (alloc * (s.price * 0.015)).toFixed(0);
-    const nearExit = parseFloat(s.price) > parseFloat(s.ma5);
-    const ma5Color = nearExit ? 'var(--yellow)' : 'var(--green)';
-    const ma5Note = nearExit ? ' ⚠' : '';
-    html += `<tr>
-      <td><strong style="color:var(--blue)">${s.sym}</strong></td>
-      <td><strong>$${s.price}</strong></td>
-      <td><span class="rsi-pill ${rsiClass(s.rsi)}">${s.rsi}</span></td>
-      <td style="color:${ma5Color}"><strong>$${s.ma5}</strong><span style="font-size:10px">${ma5Note}</span><br><span style="font-size:10px;color:var(--muted)">close above = exit</span></td>
-      <td style="color:var(--green)"><strong>$${target}</strong><br><span style="font-size:10px;color:var(--muted)">+1.5% avg recovery</span></td>
-      <td class="pnl-pos"><strong>+$${Number(estPnl).toLocaleString()}</strong><br><span style="font-size:10px;color:var(--muted)">${alloc} sh × $${(s.price*0.015).toFixed(2)}</span></td>
-      <td><span class="badge badge-buy">BUY OPEN</span></td>
-      <td><strong>${alloc} sh</strong><br><span style="color:var(--muted);font-size:10px">~$${Number(allocDol).toLocaleString()}</span></td>
-    </tr>`;
-  }
-  html += '</tbody></table>';
-  el.innerHTML = html;
-}
-
-// ─── INIT ─────────────────────────────────────────────────────
+checkOffSeason();
+checkORBWindow();
 fetchSPY();
-scanSignals();
-setInterval(fetchSPY, 60000);
-setInterval(scanSignals, 300000); // re-scan every 5 min
+setInterval(() => { fetchSPY(); checkORBWindow(); }, 60000);
+
+// ---- CSV PARSING ----
+function parseNum(v) {
+  if (v === undefined || v === null || v === '' || v === 'N/A') return NaN;
+  return parseFloat(String(v).replace(/,/g, ''));
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return { picks: [], excluded: [] };
+  const isTab = lines[0].includes('\t');
+
+  function splitLine(line) {
+    if (isTab) return line.split('\t').map(c => c.replace(/^"|"$/g, '').trim());
+    const result = []; let cur = '', inq = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inq = !inq; }
+      else if (ch === ',' && !inq) { result.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    result.push(cur.trim());
+    return result;
+  }
+
+  const headers = splitLine(lines[0]);
+  const ix = {};
+  headers.forEach((h, i) => { ix[h.trim().replace(/^\uFEFF/, '')] = i; });
+
+  function col(...names) {
+    for (const n of names) if (ix[n] !== undefined) return ix[n];
+    return undefined;
+  }
+
+  const C = {
+    sy: col('Symbol'),
+    la: col('Latest','Last','Price','Close'),
+    hi: col('High'),
+    lo: col('Low'),
+    pr: col('Previous','Prev Close','PrevClose'),
+    m2: col('20D MA','20MA','20-Day MA'),
+    m5: col('50D MA','50MA','50-Day MA'),
+    pl: col('Prev Low','PrevLow'),
+    ph: col('Prev High','PrevHigh'),
+    hw: col('52W High','52-Week High','52WkHigh'),
+    vo: col('Volume'),
+  };
+
+  const picks = [], excluded = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitLine(lines[i]);
+    const sy = cols[C.sy];
+    if (!sy || !/^[A-Z.]{1,6}$/.test(sy.trim())) continue;
+    const sym = sy.trim();
+
+    const la = parseNum(cols[C.la]);
+    const hi = parseNum(cols[C.hi]);   // ORB HIGH (first 60-min)
+    const lo = parseNum(cols[C.lo]);   // ORB LOW  (first 60-min)
+    const pr = parseNum(cols[C.pr]);   // prev close
+    const m2 = parseNum(cols[C.m2]);
+    const m5 = parseNum(cols[C.m5]);
+    const hw = parseNum(cols[C.hw]);
+
+    // Require core fields
+    if (isNaN(la) || isNaN(pr) || isNaN(m2) || isNaN(m5)) {
+      excluded.push({s:sym, r:'Missing required fields'}); continue;
+    }
+    if (pr <= 0) { excluded.push({s:sym, r:'Invalid prev close'}); continue; }
+
+    // Gap filter: 1% to 3%
+    const gp = ((la - pr) / pr) * 100;
+    if (gp < 1.0) { excluded.push({s:sym, r:`Gap ${gp.toFixed(2)}% < 1.0%`}); continue; }
+    if (gp > 3.0) { excluded.push({s:sym, r:`Gap ${gp.toFixed(2)}% > 3.0%`}); continue; }
+
+    // Above 20MA
+    if (la <= m2) { excluded.push({s:sym, r:`Below 20MA $${m2.toFixed(2)}`}); continue; }
+
+    // Above 50MA
+    if (la <= m5) { excluded.push({s:sym, r:`Below 50MA $${m5.toFixed(2)}`}); continue; }
+
+    // 20MA above 50MA (uptrend)
+    if (m2 <= m5) { excluded.push({s:sym, r:`20MA below 50MA — no uptrend`}); continue; }
+
+    // 52W high proximity: must be at least 1% below
+    const d5 = (!isNaN(hw) && hw > 0) ? ((hw - la) / hw) * 100 : 100;
+    if (d5 < 1.0) { excluded.push({s:sym, r:`Only ${d5.toFixed(1)}% below 52W high`}); continue; }
+
+    // Max 18% above 20MA (not overextended)
+    const a2 = ((la - m2) / m2) * 100;
+    if (a2 > 18) { excluded.push({s:sym, r:`${a2.toFixed(1)}% above 20MA — overextended`}); continue; }
+
+    // ORB setup — use High/Low as ORB range
+    const orbHigh = !isNaN(hi) ? hi : la;
+    const orbLow  = !isNaN(lo) ? lo : la;
+
+    const entry  = Math.round(orbHigh * 100) / 100;  // Pullback entry: wait for price to return to ORB High as support
+    const stop   = Math.round((orbLow  - 0.10) * 100) / 100;
+    const risk   = Math.round((entry - stop) * 100) / 100;
+
+    if (risk <= 0) { excluded.push({s:sym, r:'Invalid ORB range'}); continue; }
+    if (risk > entry * 0.08) { excluded.push({s:sym, r:`Risk $${risk} too wide (>${(entry*0.08).toFixed(2)})`}); continue; }
+
+    // 2:1 target
+    const target = Math.round((entry + risk * RR) * 100) / 100;
+    const shares = Math.floor(ACCOUNT / entry);
+    if (shares === 0) { excluded.push({s:sym, r:'Price too high for account'}); continue; }
+
+    const maxProfit = Math.round(shares * (target - entry) * 100) / 100;
+    const maxLoss   = Math.round(shares * risk * 100) / 100;
+
+    // Min risk per share: 0.8% of stock price (noise floor based on actual S&P 100 ATR data)
+    const minRiskPerShare = Math.round(entry * 0.008 * 100) / 100;
+    if (risk < minRiskPerShare) { excluded.push({s:sym, r:`Risk $${risk}/share < min $${minRiskPerShare} (0.8% of price)`}); continue; }
+
+    // Scoring
+    const a5 = ((la - m5) / m5) * 100;
+    const maScore  = (a2 > 0 && a5 > 0) ? 30 : (a2 > 0 ? 15 : 0);
+    const gapScore = gp >= 2.0 ? 25 : gp >= 1.5 ? 20 : gp >= 1.0 ? 15 : 0;
+    const rsScore  = gp >= 2.0 ? 20 : gp >= 1.5 ? 15 : 10;
+    const w52Score = (d5 >= 5 && d5 <= 15) ? 15 : (d5 > 15) ? 10 : 3;  // >25% below 52W still gets 10pts
+    const total    = maScore + gapScore + rsScore + w52Score;
+
+    // Breakeven and trailing stop levels
+    const breakevenTrigger = Math.round(entry * 1.02 * 100) / 100;
+    const trailTrigger     = Math.round((entry + risk) * 100) / 100;
+    const rr = Math.round(((target - entry) / risk) * 10) / 10;
+
+    picks.push({
+      sy: sym, gp, a2, a5, d5,
+      en: entry, st: stop, tg: target,
+      ri: risk, sh: shares,
+      ml: maxLoss, pf: maxProfit, rr,
+      breakevenTrigger, trailTrigger,
+      ts: total
+    });
+  }
+
+  picks.sort((a, b) => b.ts - a.ts);
+  return { picks, excluded };
+}
+
+// ---- RENDER ----
+function analyze() {
+  const csv = document.getElementById('csvInput').value;
+  if (!csv.trim()) { alert('Paste your Barchart CSV first!'); return; }
+
+  const { picks, excluded } = parseCSV(csv);
+  lastExcluded = excluded;
+  exclShowing = false;
+
+  document.getElementById('statsRow').style.display = 'block';
+  document.getElementById('statPassed').textContent = picks.length;
+  document.getElementById('statElim').textContent = excluded.length;
+  const sig = document.getElementById('statSignal');
+  sig.textContent = picks.length > 0 ? 'TRADE' : 'SIT OUT';
+  sig.style.color  = picks.length > 0 ? '#4ade80' : '#f87171';
+
+  document.getElementById('noPicks').style.display = picks.length === 0 ? 'block' : 'none';
+
+  const container = document.getElementById('picksContainer');
+  container.innerHTML = '';
+  const ranks = ['TOP PICK', '#2 PICK', '#3 PICK'];
+
+  picks.slice(0, 3).forEach((s, i) => {
+    const card = document.createElement('div');
+    card.className = 'pick-card' + (i === 0 ? ' top' : '');
+    card.innerHTML = `
+      <div class="pick-header">
+        <div>
+          <div class="pick-rank">${ranks[i]}</div>
+          <div class="pick-sym">${s.sy}</div>
+          <div class="pick-meta">
+            <span style="color:#4ade80;font-weight:700">+${s.gp.toFixed(2)}% gap</span>
+            <span>+${s.a2.toFixed(1)}% above 20MA</span>
+            <span>+${s.a5.toFixed(1)}% above 50MA</span>
+            <span>${s.d5.toFixed(1)}% below 52W high</span>
+          </div>
+        </div>
+        <div style="text-align:right;min-width:70px">
+          <div class="pick-score-label">Score</div>
+          <div class="pick-score" style="color:${i===0?'#0ea5e9':'#64748b'}">${s.ts}</div>
+          <div class="pick-score-max">/ 90</div>
+        </div>
+      </div>
+
+      <div class="oco-box">
+        <div class="oco-title">⚡ ORB ORDER — 2:1 RISK/REWARD</div>
+        <div class="oco-prices">
+          <div class="oco-cell">
+            <div class="oco-cell-label">BUY STOP</div>
+            <div class="oco-cell-val" style="color:#4ade80">$${s.en}</div>
+          </div>
+          <div class="oco-cell">
+            <div class="oco-cell-label">STOP LOSS</div>
+            <div class="oco-cell-val" style="color:#f87171">$${s.st}</div>
+          </div>
+          <div class="oco-cell">
+            <div class="oco-cell-label">TARGET (2:1)</div>
+            <div class="oco-cell-val" style="color:#fbbf24">$${s.tg}</div>
+          </div>
+        </div>
+        <div class="oco-stats">
+          <div class="oco-stat"><div class="oco-stat-label">Shares</div><div class="oco-stat-val">${s.sh}</div></div>
+          <div class="oco-stat"><div class="oco-stat-label">Risk/Share</div><div class="oco-stat-val">$${s.ri}</div></div>
+          <div class="oco-stat"><div class="oco-stat-label">Max Loss</div><div class="oco-stat-val" style="color:#f87171">-$${s.ml}</div></div>
+          <div class="oco-stat"><div class="oco-stat-label">Max Profit</div><div class="oco-stat-val" style="color:#4ade80">+$${s.pf}</div></div>
+        </div>
+      </div>
+
+      <div class="pick-footer">
+        <div class="rr-box">
+          <div class="rr-label">Reward : Risk</div>
+          <div class="rr-val">${s.rr}:1</div>
+          <div style="font-size:10px;color:#475569;margin-top:6px">Breakeven WR: 33%</div>
+        </div>
+        <div class="exit-box">
+          <div class="exit-title">Stop Management</div>
+          <div class="stop-step">
+            <div class="step-num">1</div>
+            <div class="step-body"><span class="step-label">Enter trade</span><br>Initial stop at <span class="stop-val red">$${s.st}</span></div>
+          </div>
+          <div class="stop-step">
+            <div class="step-num">2</div>
+            <div class="step-body"><span class="step-label">At <span class="stop-val yellow">$${s.breakevenTrigger}</span> (+2%)</span><br>Move stop to breakeven <span class="stop-val yellow">$${s.en}</span></div>
+          </div>
+          <div class="stop-step">
+            <div class="step-num">3</div>
+            <div class="step-body"><span class="step-label">At <span class="stop-val blue">$${s.trailTrigger}</span> (+1x risk)</span><br>Set TOS trailing stop: <span class="stop-val blue">$${s.ri}</span> trail</div>
+          </div>
+          <div class="hard-exit">⏰ Hard exit Thu 2:30 PM CT</div>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  const exclBtn = document.getElementById('exclBtn');
+  document.getElementById('exclCount').textContent = excluded.length;
+  exclBtn.style.display = excluded.length > 0 ? 'block' : 'none';
+
+  const exclList = document.getElementById('exclList');
+  exclList.innerHTML = '';
+  exclList.className = 'excl-list';
+  excluded.forEach(e => {
+    const row = document.createElement('div');
+    row.className = 'excl-row';
+    row.innerHTML = `<span class="excl-sym">${e.s}</span><span class="excl-reason">${e.r}</span>`;
+    exclList.appendChild(row);
+  });
+}
+
+function toggleExcl() {
+  exclShowing = !exclShowing;
+  const list = document.getElementById('exclList');
+  const btn  = document.getElementById('exclBtn');
+  list.className = 'excl-list' + (exclShowing ? ' show' : '');
+  btn.textContent = (exclShowing ? 'Hide' : 'Show') + ' Eliminated (' + lastExcluded.length + ')';
+}
 </script>
 </body>
 </html>
