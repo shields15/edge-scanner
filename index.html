@@ -110,7 +110,7 @@
 
   <div class="logo">
     <div class="logo-title">⚡ EDGE</div>
-    <div class="logo-sub">S&P 100 ORB Scanner — v3.0</div>
+    <div class="logo-sub">S&P 100 ORB Scanner — v3.1</div>
   </div>
 
   <!-- SPY BAR -->
@@ -150,7 +150,7 @@
 
   <!-- SYSTEM RULES -->
   <div class="sys-info">
-    <strong>Active Filters:</strong> Gap 1–3% · Stock above 20MA &amp; 50MA · SPY above 20MA · 1%+ below 52W high · 20MA above 50MA · Min profit $400<br>
+    <strong>Active Filters:</strong> Gap 1–3% · Stock above 20MA &amp; 50MA · SPY above 20MA · 1%+ below 52W high · 20MA above 50MA · Min risk 0.8% of price<br>
     <strong>R:R Ratio:</strong> 2:1 &nbsp;|&nbsp; <strong>Account:</strong> $25,000 &nbsp;|&nbsp; <strong>Off-Season:</strong> July · August · September
   </div>
 
@@ -383,7 +383,9 @@ function parseCSV(text) {
     const maxProfit = Math.round(shares * (target - entry) * 100) / 100;
     const maxLoss   = Math.round(shares * risk * 100) / 100;
 
-    if (maxProfit < 400) { excluded.push({s:sym, r:`Profit $${maxProfit} < $400 min`}); continue; }
+    // Min risk per share: 0.8% of stock price (noise floor based on actual S&P 100 ATR data)
+    const minRiskPerShare = Math.round(entry * 0.008 * 100) / 100;
+    if (risk < minRiskPerShare) { excluded.push({s:sym, r:`Risk $${risk}/share < min $${minRiskPerShare} (0.8% of price)`}); continue; }
 
     // Scoring
     const a5 = ((la - m5) / m5) * 100;
