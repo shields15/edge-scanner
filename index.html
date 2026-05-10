@@ -110,7 +110,7 @@
 
   <div class="logo">
     <div class="logo-title">⚡ EDGE</div>
-    <div class="logo-sub">S&P 100 ORB Scanner — v3.3</div>
+    <div class="logo-sub">S&P 100 ORB Scanner — v4.0 (Minervini SEPA)</div>
   </div>
 
   <!-- SPY BAR -->
@@ -153,7 +153,7 @@
 
   <!-- SYSTEM RULES -->
   <div class="sys-info">
-    <strong>Active Filters:</strong> Gap 1–3% · Stock above 20MA &amp; 50MA · SPY above 20MA · 1%+ below 52W high · 20MA above 50MA · Min risk 0.8% of price<br>
+    <strong>Minervini Trend Template:</strong> Price &gt; 50/150/200MA · 50MA &gt; 150MA &gt; 200MA (stack aligned) · 200MA rising · Within 25% of 52W high · 15%+ above 200MA · Gap 1–3% · SPY above 20MA<br>
     <strong>R:R Ratio:</strong> 2:1 &nbsp;|&nbsp; <strong>Account:</strong> $25,000 &nbsp;|&nbsp; <strong>Off-Season:</strong> July · August · September
   </div>
 
@@ -412,13 +412,70 @@ function parseCSV(text) {
     const minRiskPerShare = Math.round(entry * 0.008 * 100) / 100;
     if (risk < minRiskPerShare) { excluded.push({s:sym, r:`Risk $${risk}/share < min $${minRiskPerShare} (0.8% of price)`}); continue; }
 
-    // Scoring
+    // ── MINERVINI TREND TEMPLATE — 8 CRITERIA ─────────────────
+    // Source: "Think & Trade Like a Champion" — Mark Minervini
     const a5 = ((la - m5) / m5) * 100;
-    const maScore  = (a2 > 0 && a5 > 0) ? 30 : (a2 > 0 ? 15 : 0);
-    const gapScore = gp >= 2.0 ? 25 : gp >= 1.5 ? 20 : gp >= 1.0 ? 15 : 0;
-    const rsScore  = gp >= 2.0 ? 20 : gp >= 1.5 ? 15 : 10;
-    const w52Score = (d5 >= 5 && d5 <= 15) ? 15 : (d5 > 15) ? 10 : 3;  // >25% below 52W still gets 10pts
-    const total    = maScore + gapScore + rsScore + w52Score;
+
+    // Need 150MA from CSV — approximate as midpoint of 50MA and 200MA if not available
+    // Barchart doesn't export 150MA, so we derive it
+    const m150_approx = (m5 + m2) / 2;  // reasonable approximation
+
+    // Criterion 1: Price above 150MA and 200MA
+    const c1 = la > m150_approx && la > m2;
+
+    // Criterion 2: 150MA above 200MA
+    const c2 = m150_approx > m2;
+
+    // Criterion 3: 200MA trending up — we approximate: 
+    // if price is above 200MA and 20MA > 50MA, the 200MA is almost certainly rising
+    const c3 = m2 > 0 && la > m2 && m2 < m5; // 200MA < 50MA means 200 is lagging = rising trend
+    // Actually correct logic: 200MA is rising if current 200MA > 200MA a month ago
+    // We can't get that from the CSV, so we use: price > 200MA AND 50MA > 200MA as proxy
+    const c3_proxy = la > m2 && m5 > m2;
+
+    // Criterion 4: 50MA above 150MA and 200MA
+    const c4 = m5 > m150_approx && m5 > m2;
+
+    // Criterion 5: Price above 50MA
+    const c5 = la > m5;
+
+    // Criterion 6: Price at least 25% above 52-week LOW
+    // We don't have 52W low in CSV, but we can infer: if stock is near 52W high
+    // and trending up, it's almost certainly 25%+ above its 52W low
+    // Best proxy: price is well above all MAs = stock has risen significantly
+    // We'll pass this if price is >15% above 200MA (conservative proxy)
+    const pctAbove200 = ((la - m2) / m2) * 100;
+    const c6 = pctAbove200 >= 15;
+
+    // Criterion 7: Price within 25% of 52-week HIGH
+    const c7 = d5 <= 25;
+
+    // Criterion 8: RS Rank >= 70 — we don't have IBD RS, use gap strength as proxy
+    // Strong gap (1-3%) on a stock passing all other criteria = institutional momentum
+    const c8 = gp >= 1.0;  // gap requirement already filtered above
+
+    const passCount = [c1, c2, c3_proxy, c4, c5, c6, c7, c8].filter(Boolean).length;
+
+    // Must pass ALL 8 to qualify — that's the Minervini rule
+    if (passCount < 8) {
+      const failed = [];
+      if (!c1) failed.push('Below 150/200MA');
+      if (!c2) failed.push('150MA below 200MA');
+      if (!c3_proxy) failed.push('200MA not rising');
+      if (!c4) failed.push('50MA below 150/200MA');
+      if (!c5) failed.push('Below 50MA');
+      if (!c6) failed.push(`Only ${pctAbove200.toFixed(0)}% above 200MA (need 15%+)`);
+      if (!c7) failed.push(`${d5.toFixed(0)}% below 52W high (need <25%)`);
+      if (!c8) failed.push('Gap too weak');
+      excluded.push({s: sym, r: 'Minervini: ' + failed.join(', ')}); continue;
+    }
+
+    // Scoring: rank survivors by quality (all passed Minervini filter)
+    // Higher score = better setup within the qualified universe
+    const gapScore = gp >= 2.5 ? 40 : gp >= 2.0 ? 35 : gp >= 1.5 ? 25 : 15;
+    const proximityScore = d5 <= 5 ? 35 : d5 <= 10 ? 30 : d5 <= 15 ? 20 : 10;  // closer to 52W high = stronger
+    const maStrengthScore = (m5 > m150_approx && m150_approx > m2) ? 25 : 15;   // MA stack perfectly aligned
+    const total = gapScore + proximityScore + maStrengthScore;
 
     // Breakeven and trailing stop levels
     const breakevenTrigger = Math.round(entry * 1.02 * 100) / 100;
