@@ -335,8 +335,8 @@ function parseCSV(text) {
   const C = {
     sy:  col('Symbol'),
     la:  col('Latest','Last','Price','Close'),
-    hi:  col('High'),
-    lo:  col('Low'),
+    hi:  col('5D High','High'),
+    lo:  col('5D Low','Low'),
     pr:  col('Previous','Prev Close','PrevClose'),
     m20: col('20D MA','20MA','20-Day MA'),
     m50: col('50D MA','50MA','50-Day MA'),
@@ -357,9 +357,9 @@ function parseCSV(text) {
     const sym = sy.trim();
 
     const la   = parseNum(cols[C.la]);
-    const hi   = parseNum(cols[C.hi]);    // ORB High (first 60 min)
-    const lo   = parseNum(cols[C.lo]);    // ORB Low  (first 60 min)
-    const pr   = parseNum(cols[C.pr]);    // Previous close
+    const hi   = parseNum(cols[C.hi]);    // 5D High (used as ORB High)
+    const lo   = parseNum(cols[C.lo]);    // 5D Low  (used as ORB Low)
+    const pr   = parseNum(cols[C.pr]);    // Previous close (optional)
     const m20  = parseNum(cols[C.m20]);
     const m50  = parseNum(cols[C.m50]);
     const m150 = parseNum(cols[C.m150]);
@@ -369,17 +369,12 @@ function parseCSV(text) {
 
     // ── CORE FIELD VALIDATION ──────────────────────────────────────
     if (isNaN(la) || la <= 0)   { excluded.push({s:sym, r:'Missing price'}); continue; }
-    if (isNaN(pr) || pr <= 0)   { excluded.push({s:sym, r:'Missing previous close'}); continue; }
     if (isNaN(m50) || m50 <= 0) { excluded.push({s:sym, r:'Missing 50D MA'}); continue; }
-    if (isNaN(m150)|| m150<=0)  { excluded.push({s:sym, r:'Missing 150D MA — add column to Barchart export'}); continue; }
-    if (isNaN(m200)|| m200<=0)  { excluded.push({s:sym, r:'Missing 200D MA — add column to Barchart export'}); continue; }
+    if (isNaN(m150)|| m150<=0)  { excluded.push({s:sym, r:'Missing 150D MA'}); continue; }
+    if (isNaN(m200)|| m200<=0)  { excluded.push({s:sym, r:'Missing 200D MA'}); continue; }
     if (isNaN(hw)  || hw <= 0)  { excluded.push({s:sym, r:'Missing 52W High'}); continue; }
-    if (isNaN(lw)  || lw <= 0)  { excluded.push({s:sym, r:'Missing 52W Low — add column to Barchart export'}); continue; }
-
-    // ── GAP FILTER: 1% to 3% ──────────────────────────────────────
-    const gp = ((la - pr) / pr) * 100;
-    if (gp < 1.0) { excluded.push({s:sym, r:`Gap ${gp.toFixed(2)}% < 1% min`}); continue; }
-    if (gp > 3.0) { excluded.push({s:sym, r:`Gap ${gp.toFixed(2)}% > 3% max`}); continue; }
+    if (isNaN(lw)  || lw <= 0)  { excluded.push({s:sym, r:'Missing 52W Low'}); continue; }
+    if (isNaN(hi)  || isNaN(lo) || hi <= lo) { excluded.push({s:sym, r:'Missing/invalid 5D High or 5D Low'}); continue; }
 
     // ── MINERVINI TREND TEMPLATE — ALL 8 CRITERIA EXACT ──────────
     // Source: "Think & Trade Like a Champion" — Mark Minervini
